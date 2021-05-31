@@ -530,7 +530,7 @@ func QueryRange(url *url.URL, headers map[string]string, query, start, end strin
 	config := api.Config{
 		Address: url.String(),
 	}
-
+	fmt.Printf("this should be caught %s", 2)
 	if len(headers) > 0 {
 		config.RoundTripper = promhttp.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
 			for key, value := range headers {
