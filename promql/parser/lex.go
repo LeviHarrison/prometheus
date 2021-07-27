@@ -407,9 +407,7 @@ func lexStatements(l *Lexer) stateFn {
 			l.backup()
 			return lexKeywordOrIdentifier
 		}
-		if l.gotColon {
-			return l.errorf("unexpected colon %q", r)
-		}
+		// TODO(leviharrison): Add check.
 		l.emit(COLON)
 		l.gotColon = true
 	case r == '(':
