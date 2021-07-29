@@ -139,6 +139,7 @@ var ItemTypeStr = map[ItemType]string{
 	COMMA:         ",",
 	EQL:           "=",
 	COLON:         ":",
+	DOUBLECOLON:   "::",
 	SEMICOLON:     ";",
 	BLANK:         "_",
 	TIMES:         "x",
@@ -407,8 +408,15 @@ func lexStatements(l *Lexer) stateFn {
 			l.backup()
 			return lexKeywordOrIdentifier
 		}
-		// TODO(leviharrison): Add check.
-		l.emit(COLON)
+		if l.gotColon {
+			return l.errorf("unexpected colon %q", r)
+		}
+		if t := l.peek(); t == ':' {
+			l.next()
+			l.emit(DOUBLECOLON)
+		} else {
+			l.emit(COLON)
+		}
 		l.gotColon = true
 	case r == '(':
 		l.emit(LEFT_PAREN)
