@@ -224,22 +224,26 @@ type EngineOpts struct {
 
 	// EnableNegativeOffset if true enables negative (-) offset values. Disabled otherwise.
 	EnableNegativeOffset bool
+
+	// EnableEvalAlignedSubqueries if true enabled the :: subquery. Disabled otherwise.
+	EnableEvalAlignedSubqueries bool
 }
 
 // Engine handles the lifetime of queries from beginning to end.
 // It is connected to a querier.
 type Engine struct {
-	logger                   log.Logger
-	metrics                  *engineMetrics
-	timeout                  time.Duration
-	maxSamplesPerQuery       int
-	activeQueryTracker       *ActiveQueryTracker
-	queryLogger              QueryLogger
-	queryLoggerLock          sync.RWMutex
-	lookbackDelta            time.Duration
-	noStepSubqueryIntervalFn func(rangeMillis int64) int64
-	enableAtModifier         bool
-	enableNegativeOffset     bool
+	logger                      log.Logger
+	metrics                     *engineMetrics
+	timeout                     time.Duration
+	maxSamplesPerQuery          int
+	activeQueryTracker          *ActiveQueryTracker
+	queryLogger                 QueryLogger
+	queryLoggerLock             sync.RWMutex
+	lookbackDelta               time.Duration
+	noStepSubqueryIntervalFn    func(rangeMillis int64) int64
+	enableAtModifier            bool
+	enableNegativeOffset        bool
+	enableEvalAlignedSubqueries bool
 }
 
 // NewEngine returns a new engine.
@@ -313,15 +317,16 @@ func NewEngine(opts EngineOpts) *Engine {
 	}
 
 	return &Engine{
-		timeout:                  opts.Timeout,
-		logger:                   opts.Logger,
-		metrics:                  metrics,
-		maxSamplesPerQuery:       opts.MaxSamples,
-		activeQueryTracker:       opts.ActiveQueryTracker,
-		lookbackDelta:            opts.LookbackDelta,
-		noStepSubqueryIntervalFn: opts.NoStepSubqueryIntervalFn,
-		enableAtModifier:         opts.EnableAtModifier,
-		enableNegativeOffset:     opts.EnableNegativeOffset,
+		timeout:                     opts.Timeout,
+		logger:                      opts.Logger,
+		metrics:                     metrics,
+		maxSamplesPerQuery:          opts.MaxSamples,
+		activeQueryTracker:          opts.ActiveQueryTracker,
+		lookbackDelta:               opts.LookbackDelta,
+		noStepSubqueryIntervalFn:    opts.NoStepSubqueryIntervalFn,
+		enableAtModifier:            opts.EnableAtModifier,
+		enableNegativeOffset:        opts.EnableNegativeOffset,
+		enableEvalAlignedSubqueries: opts.EnableEvalAlignedSubqueries,
 	}
 }
 
@@ -404,13 +409,14 @@ func (ng *Engine) newQuery(q storage.Queryable, expr parser.Expr, start, end tim
 
 var ErrValidationAtModifierDisabled = errors.New("@ modifier is disabled")
 var ErrValidationNegativeOffsetDisabled = errors.New("negative offset is disabled")
+var ErrValidationEvalAlignedSubqueriesDisabled = errors.New("evaluation time aligned subqueries are disabled")
 
 func (ng *Engine) validateOpts(expr parser.Expr) error {
-	if ng.enableAtModifier && ng.enableNegativeOffset {
+	if ng.enableAtModifier && ng.enableNegativeOffset && ng.enableEvalAlignedSubqueries {
 		return nil
 	}
 
-	var atModifierUsed, negativeOffsetUsed bool
+	var atModifierUsed, negativeOffsetUsed, evalAlignedSubqueriesUsed bool
 
 	var validationErr error
 	parser.Inspect(expr, func(node parser.Node, path []parser.Node) error {
@@ -439,6 +445,9 @@ func (ng *Engine) validateOpts(expr parser.Expr) error {
 			if n.OriginalOffset < 0 {
 				negativeOffsetUsed = true
 			}
+			if n.AlignEvalTime {
+				evalAlignedSubqueriesUsed = true
+			}
 		}
 
 		if atModifierUsed && !ng.enableAtModifier {
@@ -447,6 +456,10 @@ func (ng *Engine) validateOpts(expr parser.Expr) error {
 		}
 		if negativeOffsetUsed && !ng.enableNegativeOffset {
 			validationErr = ErrValidationNegativeOffsetDisabled
+			return validationErr
+		}
+		if evalAlignedSubqueriesUsed && !ng.enableEvalAlignedSubqueries {
+			validationErr = ErrValidationEvalAlignedSubqueriesDisabled
 			return validationErr
 		}
 
