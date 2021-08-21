@@ -957,12 +957,8 @@ load 10s
 			End:        time.Unix(10, 0),
 			Interval:   5 * time.Second,
 		}, {
-			// The step of evaluation time aligned subqueries divides evenly into the range, so:
-			//   - The subquery takes 20 samples now, with 10 for each bigmetric.
-			//   - Hence, the buffer is now 10 samples.
-			//   - We still have the last 2, so a total of 32.
 			Query:      `rate(bigmetric[10s::1s] @ 10)`,
-			MaxSamples: 32,
+			MaxSamples: 35,
 			Start:      time.Unix(0, 0),
 			End:        time.Unix(10, 0),
 			Interval:   5 * time.Second,
@@ -976,9 +972,8 @@ load 10s
 			End:        time.Unix(10, 0),
 			Interval:   5 * time.Second,
 		}, {
-			// Same here with 10 samples instead of 11.
 			Query:      `rate(bigmetric[10s::1s] @ 10) + rate(bigmetric[10s::1s] @ 30)`,
-			MaxSamples: 34,
+			MaxSamples: 37,
 			Start:      time.Unix(0, 0),
 			End:        time.Unix(10, 0),
 			Interval:   5 * time.Second,
@@ -995,7 +990,7 @@ load 10s
 			Interval:   5 * time.Second,
 		}, {
 			Query:      `rate(bigmetric[10s::1s]) + rate(bigmetric[10s::1s] @ 30)`,
-			MaxSamples: 57,
+			MaxSamples: 59,
 			Start:      time.Unix(10, 0),
 			End:        time.Unix(20, 0),
 			Interval:   5 * time.Second,
@@ -1008,7 +1003,7 @@ load 10s
 			Start:      time.Unix(10, 0),
 		}, {
 			Query:      `rate(rate(bigmetric[10s::1s] @ 10)[100s::25s] @ 1000)[100s::20s] @ 2000`,
-			MaxSamples: 32,
+			MaxSamples: 35,
 			Start:      time.Unix(10, 0),
 		}, {
 			// Nested subquery.
@@ -1019,7 +1014,7 @@ load 10s
 		},
 		{
 			Query:      `rate(rate(bigmetric[10s::1s] @ 10)[100s::25s] @ 1000)[17s::1s] @ 2000`,
-			MaxSamples: 34,
+			MaxSamples: 36,
 			Start:      time.Unix(10, 0),
 		},
 	}
@@ -1496,7 +1491,7 @@ func TestSubquerySelector(t *testing.T) {
 					Result: Result{
 						nil,
 						Matrix{Series{
-							Points: []Point{{V: 2, T: 14000}, {V: 2, T: 19000}, {V: 2, T: 24000}, {V: 2, T: 29000}},
+							Points: []Point{{V: 1, T: 9000}, {V: 2, T: 14000}, {V: 2, T: 19000}, {V: 2, T: 24000}, {V: 2, T: 29000}},
 							Metric: labels.FromStrings("__name__", "metric")},
 						},
 						nil,
@@ -1520,7 +1515,7 @@ func TestSubquerySelector(t *testing.T) {
 					Result: Result{
 						nil,
 						Matrix{Series{
-							Points: []Point{{V: 2, T: 13000}, {V: 2, T: 18000}, {V: 2, T: 23000}, {V: 2, T: 28000}},
+							Points: []Point{{V: 1, T: 8000}, {V: 2, T: 13000}, {V: 2, T: 18000}, {V: 2, T: 23000}, {V: 2, T: 28000}},
 							Metric: labels.FromStrings("__name__", "metric")},
 						},
 						nil,
@@ -1553,7 +1548,7 @@ func TestSubquerySelector(t *testing.T) {
 					Result: Result{
 						nil,
 						Matrix{Series{
-							Points: []Point{{V: 10000, T: 10000000}, {V: 100, T: 10010000}, {V: 130, T: 10020000}},
+							Points: []Point{{V: 9990, T: 9990000}, {V: 10000, T: 10000000}, {V: 100, T: 10010000}, {V: 130, T: 10020000}},
 							Metric: labels.FromStrings("__name__", "http_requests", "job", "api-server", "instance", "0", "group", "production")},
 						},
 						nil,
@@ -1577,7 +1572,7 @@ func TestSubquerySelector(t *testing.T) {
 					Result: Result{
 						nil,
 						Matrix{Series{
-							Points: []Point{{V: 9860, T: 9860000}, {V: 9920, T: 9920000}, {V: 9980, T: 9980000}, {V: 190, T: 10040000}, {V: 370, T: 10100000}},
+							Points: []Point{{V: 9800, T: 9800000}, {V: 9860, T: 9860000}, {V: 9920, T: 9920000}, {V: 9980, T: 9980000}, {V: 190, T: 10040000}, {V: 370, T: 10100000}},
 							Metric: labels.FromStrings("__name__", "http_requests", "job", "api-server", "instance", "0", "group", "production")},
 						},
 						nil,
@@ -1601,7 +1596,7 @@ func TestSubquerySelector(t *testing.T) {
 					Result: Result{
 						nil,
 						Matrix{Series{
-							Points: []Point{{V: 8660, T: 8660000}, {V: 8720, T: 8720000}, {V: 8780, T: 8780000}, {V: 8840, T: 8840000}, {V: 8900, T: 8900000}},
+							Points: []Point{{V: 8600, T: 8600000}, {V: 8660, T: 8660000}, {V: 8720, T: 8720000}, {V: 8780, T: 8780000}, {V: 8840, T: 8840000}, {V: 8900, T: 8900000}},
 							Metric: labels.FromStrings("__name__", "http_requests", "job", "api-server", "instance", "0", "group", "production")},
 						},
 						nil,
@@ -1640,19 +1635,19 @@ func TestSubquerySelector(t *testing.T) {
 						nil,
 						Matrix{
 							Series{
-								Points: []Point{{V: 3, T: 7990000}, {V: 3, T: 7995000}, {V: 3, T: 8000000}},
+								Points: []Point{{V: 3, T: 7985000}, {V: 3, T: 7990000}, {V: 3, T: 7995000}, {V: 3, T: 8000000}},
 								Metric: labels.FromStrings("job", "api-server", "instance", "0", "group", "canary"),
 							},
 							Series{
-								Points: []Point{{V: 4, T: 7990000}, {V: 4, T: 7995000}, {V: 4, T: 8000000}},
+								Points: []Point{{V: 4, T: 7985000}, {V: 4, T: 7990000}, {V: 4, T: 7995000}, {V: 4, T: 8000000}},
 								Metric: labels.FromStrings("job", "api-server", "instance", "1", "group", "canary"),
 							},
 							Series{
-								Points: []Point{{V: 1, T: 7990000}, {V: 1, T: 7995000}, {V: 1, T: 8000000}},
+								Points: []Point{{V: 1, T: 7985000}, {V: 1, T: 7990000}, {V: 1, T: 7995000}, {V: 1, T: 8000000}},
 								Metric: labels.FromStrings("job", "api-server", "instance", "0", "group", "production"),
 							},
 							Series{
-								Points: []Point{{V: 2, T: 7990000}, {V: 2, T: 7995000}, {V: 2, T: 8000000}},
+								Points: []Point{{V: 2, T: 7985000}, {V: 2, T: 7990000}, {V: 2, T: 7995000}, {V: 2, T: 8000000}},
 								Metric: labels.FromStrings("job", "api-server", "instance", "1", "group", "production"),
 							},
 						},
@@ -1677,7 +1672,7 @@ func TestSubquerySelector(t *testing.T) {
 					Result: Result{
 						nil,
 						Matrix{Series{
-							Points: []Point{{V: 300, T: 100000}, {V: 330, T: 110000}, {V: 360, T: 120000}},
+							Points: []Point{{V: 270, T: 90000}, {V: 300, T: 100000}, {V: 330, T: 110000}, {V: 360, T: 120000}},
 							Metric: labels.Labels{}},
 						},
 						nil,
@@ -1701,7 +1696,7 @@ func TestSubquerySelector(t *testing.T) {
 					Result: Result{
 						nil,
 						Matrix{Series{
-							Points: []Point{{V: 900, T: 90000}, {V: 1000, T: 100000}, {V: 1100, T: 110000}, {V: 1200, T: 120000}},
+							Points: []Point{{T: 80000, V: 800}, {V: 900, T: 90000}, {V: 1000, T: 100000}, {V: 1100, T: 110000}, {V: 1200, T: 120000}},
 							Metric: labels.Labels{}},
 						},
 						nil,
@@ -1725,7 +1720,7 @@ func TestSubquerySelector(t *testing.T) {
 					Result: Result{
 						nil,
 						Matrix{Series{
-							Points: []Point{{V: 1000, T: 105000}, {V: 1100, T: 110000}, {V: 1100, T: 115000}, {V: 1200, T: 120000}},
+							Points: []Point{{V: 1000, T: 100000}, {V: 1000, T: 105000}, {V: 1100, T: 110000}, {V: 1100, T: 115000}, {V: 1200, T: 120000}},
 							Metric: labels.Labels{}},
 						},
 						nil,
