@@ -16,10 +16,12 @@
 
 package config
 
+import "github.com/prometheus/prometheus/config"
+
 const ruleFilesConfigFile = "testdata/rules_abs_path.good.yml"
 
-var ruleFilesExpectedConf = &Config{
-	GlobalConfig: DefaultGlobalConfig,
+var ruleFilesExpectedConf = &config.Config{
+	GlobalConfig: config.DefaultGlobalConfig,
 	RuleFiles: []string{
 		"testdata/first.rules",
 		"testdata/rules/second.rules",
