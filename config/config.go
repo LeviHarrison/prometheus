@@ -212,6 +212,12 @@ var (
 	DefaultExemplarsConfig = ExemplarsConfig{
 		MaxExemplars: 100000,
 	}
+
+	// Default AzureADConfig is the default Azure Active Directory authentication
+	// configuration.
+	DefaultAzureADConfig = AzureADConfig{
+		AuthenticationMethod: ADAuthMethodOAuth,
+	}
 )
 
 // Config is the top-level configuration for Prometheus's config files.
@@ -935,4 +941,61 @@ func (c *RemoteReadConfig) UnmarshalYAML(unmarshal func(interface{}) error) erro
 	// We cannot make it a pointer as the parser panics for inlined pointer structs.
 	// Thus we just do its validation here.
 	return c.HTTPClientConfig.Validate()
+}
+
+type AzureADAuthMethod string
+
+const (
+	ADAuthMethodOAuth           AzureADAuthMethod = "OAuth"
+	ADAuthMethodManagedIdentity AzureADAuthMethod = "ManagedIdentity"
+)
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (m *AzureADAuthMethod) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	*m = AzureADAuthMethod("")
+	type plain AzureADAuthMethod
+	if err := unmarshal((*plain)(m)); err != nil {
+		return err
+	}
+
+	if *m != ADAuthMethodOAuth && *m != ADAuthMethodManagedIdentity {
+		return fmt.Errorf("unknown authentication_type %q. Supported types are %q or %q",
+			*m, ADAuthMethodOAuth, ADAuthMethodManagedIdentity,
+		)
+	}
+
+	return nil
+}
+
+// AzureADConfig is the configuration for Azure Active Directory
+// authentication for remote write requests.
+type AzureADConfig struct {
+	AuthenticationMethod AzureADAuthMethod `yaml:"authentication_method,omitempty"`
+	TenantID             string            `yaml:"tenant_id,omitempty"`
+	ClientID             string            `yaml:"client_id,omitempty"`
+	ClientSecret         config.Secret     `yaml:"client_secret,omitempty"`
+}
+
+// Validate validates the Azure AD configuration.
+func (c *AzureADConfig) Validate() error {
+	if c.AuthenticationMethod == ADAuthMethodOAuth {
+		if err := validateAuthParam(c.TenantID, "tenant_id"); err != nil {
+			return err
+		}
+		if err := validateAuthParam(c.ClientID, "client_id"); err != nil {
+			return err
+		}
+		if err := validateAuthParam(string(c.ClientSecret), "client_secret"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func validateAuthParam(param, name string) error {
+	if len(param) == 0 {
+		return fmt.Errorf("the Azure AD OAuth authentication method requires a %s", name)
+	}
+	return nil
 }

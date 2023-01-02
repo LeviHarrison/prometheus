@@ -627,16 +627,18 @@ var expectedConf = &config.Config{
 
 			ServiceDiscoveryConfigs: discovery.Configs{
 				&azure.SDConfig{
-					Environment:          "AzurePublicCloud",
-					SubscriptionID:       "11AAAA11-A11A-111A-A111-1111A1111A11",
-					ResourceGroup:        "my-resource-group",
-					TenantID:             "BBBB222B-B2B2-2B22-B222-2BB2222BB2B2",
-					ClientID:             "333333CC-3C33-3333-CCC3-33C3CCCCC33C",
-					ClientSecret:         "mysecret",
-					AuthenticationMethod: "OAuth",
-					RefreshInterval:      model.Duration(5 * time.Minute),
-					Port:                 9100,
-					HTTPClientConfig:     common_config.DefaultHTTPClientConfig,
+					Environment:    "AzurePublicCloud",
+					SubscriptionID: "11AAAA11-A11A-111A-A111-1111A1111A11",
+					ResourceGroup:  "my-resource-group",
+					AzureADConfig: config.AzureADConfig{
+						TenantID:             "BBBB222B-B2B2-2B22-B222-2BB2222BB2B2",
+						ClientID:             "333333CC-3C33-3333-CCC3-33C3CCCCC33C",
+						ClientSecret:         "mysecret",
+						AuthenticationMethod: "OAuth",
+					},
+					RefreshInterval:  model.Duration(5 * time.Minute),
+					Port:             9100,
+					HTTPClientConfig: common_config.DefaultHTTPClientConfig,
 				},
 			},
 		},
@@ -1548,11 +1550,11 @@ var expectedErrors = []struct {
 	},
 	{
 		filename: "azure_client_id_missing.bad.yml",
-		errMsg:   "azure SD configuration requires a client_id",
+		errMsg:   "the Azure AD OAuth authentication method requires a client_id",
 	},
 	{
 		filename: "azure_client_secret_missing.bad.yml",
-		errMsg:   "azure SD configuration requires a client_secret",
+		errMsg:   "the Azure AD OAuth authentication method requires a client_secret",
 	},
 	{
 		filename: "azure_subscription_id_missing.bad.yml",
@@ -1560,7 +1562,7 @@ var expectedErrors = []struct {
 	},
 	{
 		filename: "azure_tenant_id_missing.bad.yml",
-		errMsg:   "azure SD configuration requires a tenant_id",
+		errMsg:   "the Azure AD OAuth authentication method requires a tenant_id",
 	},
 	{
 		filename: "azure_authentication_method.bad.yml",

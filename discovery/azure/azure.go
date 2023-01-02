@@ -35,6 +35,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/common/version"
 
+	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/refresh"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
@@ -56,9 +57,6 @@ const (
 	azureLabelMachineTag           = azureLabel + "machine_tag_"
 	azureLabelMachineScaleSet      = azureLabel + "machine_scale_set"
 	azureLabelMachineSize          = azureLabel + "machine_size"
-
-	authMethodOAuth           = "OAuth"
-	authMethodManagedIdentity = "ManagedIdentity"
 )
 
 var (
@@ -66,11 +64,11 @@ var (
 
 	// DefaultSDConfig is the default Azure SD configuration.
 	DefaultSDConfig = SDConfig{
-		Port:                 80,
-		RefreshInterval:      model.Duration(5 * time.Minute),
-		Environment:          azure.PublicCloud.Name,
-		AuthenticationMethod: authMethodOAuth,
-		HTTPClientConfig:     config_util.DefaultHTTPClientConfig,
+		Port:             80,
+		RefreshInterval:  model.Duration(5 * time.Minute),
+		Environment:      azure.PublicCloud.Name,
+		AzureADConfig:    config.DefaultAzureADConfig,
+		HTTPClientConfig: config_util.DefaultHTTPClientConfig,
 	}
 
 	failuresCount = prometheus.NewCounter(
@@ -87,15 +85,13 @@ func init() {
 
 // SDConfig is the configuration for Azure based service discovery.
 type SDConfig struct {
-	Environment          string             `yaml:"environment,omitempty"`
-	Port                 int                `yaml:"port"`
-	SubscriptionID       string             `yaml:"subscription_id"`
-	TenantID             string             `yaml:"tenant_id,omitempty"`
-	ClientID             string             `yaml:"client_id,omitempty"`
-	ClientSecret         config_util.Secret `yaml:"client_secret,omitempty"`
-	RefreshInterval      model.Duration     `yaml:"refresh_interval,omitempty"`
-	AuthenticationMethod string             `yaml:"authentication_method,omitempty"`
-	ResourceGroup        string             `yaml:"resource_group,omitempty"`
+	Environment     string         `yaml:"environment,omitempty"`
+	Port            int            `yaml:"port"`
+	SubscriptionID  string         `yaml:"subscription_id"`
+	RefreshInterval model.Duration `yaml:"refresh_interval,omitempty"`
+	ResourceGroup   string         `yaml:"resource_group,omitempty"`
+
+	AzureADConfig config.AzureADConfig `yaml:",inline"`
 
 	HTTPClientConfig config_util.HTTPClientConfig `yaml:",inline"`
 }
@@ -128,23 +124,10 @@ func (c *SDConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	if c.AuthenticationMethod == authMethodOAuth {
-		if err = validateAuthParam(c.TenantID, "tenant_id"); err != nil {
-			return err
-		}
-		if err = validateAuthParam(c.ClientID, "client_id"); err != nil {
-			return err
-		}
-		if err = validateAuthParam(string(c.ClientSecret), "client_secret"); err != nil {
-			return err
-		}
-	}
-
-	if c.AuthenticationMethod != authMethodOAuth && c.AuthenticationMethod != authMethodManagedIdentity {
-		return fmt.Errorf("unknown authentication_type %q. Supported types are %q or %q", c.AuthenticationMethod, authMethodOAuth, authMethodManagedIdentity)
-	}
-
-	return nil
+	// The UnmarshalYAML method of AzureADConfig is not being called because it's not a pointer.
+	// We cannot make it a pointer as the parser panics for inlined pointer structs.
+	// Thus we just do its validation here.
+	return c.AzureADConfig.Validate()
 }
 
 type Discovery struct {
@@ -195,19 +178,20 @@ func createAzureClient(cfg SDConfig) (azureClient, error) {
 
 	var spt *adal.ServicePrincipalToken
 
-	switch cfg.AuthenticationMethod {
-	case authMethodManagedIdentity:
-		spt, err = adal.NewServicePrincipalTokenFromManagedIdentity(resourceManagerEndpoint, &adal.ManagedIdentityOptions{ClientID: cfg.ClientID})
+	switch cfg.AzureADConfig.AuthenticationMethod {
+	case config.ADAuthMethodManagedIdentity:
+		spt, err = adal.NewServicePrincipalTokenFromManagedIdentity(resourceManagerEndpoint, &adal.ManagedIdentityOptions{ClientID: cfg.AzureADConfig.ClientID})
 		if err != nil {
 			return azureClient{}, err
 		}
-	case authMethodOAuth:
-		oauthConfig, err := adal.NewOAuthConfig(activeDirectoryEndpoint, cfg.TenantID)
+	case config.ADAuthMethodOAuth:
+		fmt.Println("hit")
+		oauthConfig, err := adal.NewOAuthConfig(activeDirectoryEndpoint, cfg.AzureADConfig.TenantID)
 		if err != nil {
 			return azureClient{}, err
 		}
 
-		spt, err = adal.NewServicePrincipalToken(*oauthConfig, cfg.ClientID, string(cfg.ClientSecret), resourceManagerEndpoint)
+		spt, err = adal.NewServicePrincipalToken(*oauthConfig, cfg.AzureADConfig.ClientID, string(cfg.AzureADConfig.ClientSecret), resourceManagerEndpoint)
 		if err != nil {
 			return azureClient{}, err
 		}
@@ -338,7 +322,7 @@ func (d *Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error) {
 
 			labels := model.LabelSet{
 				azureLabelSubscriptionID:       model.LabelValue(d.cfg.SubscriptionID),
-				azureLabelTenantID:             model.LabelValue(d.cfg.TenantID),
+				azureLabelTenantID:             model.LabelValue(d.cfg.AzureADConfig.TenantID),
 				azureLabelMachineID:            model.LabelValue(vm.ID),
 				azureLabelMachineName:          model.LabelValue(vm.Name),
 				azureLabelMachineComputerName:  model.LabelValue(vm.ComputerName),
