@@ -11,7 +11,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/dennwc/varint v1.0.0
 	github.com/dgryski/go-sip13 v0.0.0-20200911182023-62edffca9245
-	github.com/digitalocean/godo v1.80.0
+	github.com/digitalocean/godo v1.97.0
 	github.com/docker/docker v20.10.16+incompatible
 	github.com/edsrzf/mmap-go v1.1.0
 	github.com/envoyproxy/go-control-plane v0.10.2-0.20220325020618-49ff273808a1
@@ -60,11 +60,11 @@ require (
 	go.uber.org/atomic v1.9.0
 	go.uber.org/automaxprocs v1.5.1
 	go.uber.org/goleak v1.1.12
-	golang.org/x/net v0.0.0-20220607020251-c690dde0001d
+	golang.org/x/net v0.0.0-20220921155015-db77216a4ee9
 	golang.org/x/oauth2 v0.0.0-20220524215830-622c5d57e401
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a
-	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65
+	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10
+	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af
 	golang.org/x/tools v0.1.10
 	google.golang.org/api v0.83.0
 	google.golang.org/genproto v0.0.0-20220602131408-e326c6e8e9c8
